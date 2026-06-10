@@ -1,0 +1,33 @@
+[Unit]
+Description=Meeting Intelligence System API
+After=network.target
+
+[Service]
+# User and group that runs the service
+User=ubuntu
+Group=www-data
+
+# Path to the application directory
+WorkingDirectory=/home/ubuntu/meeting-intelligence
+
+# Environment Variables
+Environment="PATH=/home/ubuntu/meeting-intelligence/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+EnvironmentFile=/home/ubuntu/meeting-intelligence/.env
+
+# Gunicorn execution command
+ExecStart=/home/ubuntu/meeting-intelligence/venv/bin/gunicorn --config deploy/gunicorn_config.py src.api.app:app
+
+# Restart policies
+Restart=always
+RestartSec=5
+
+# Logging to systemd journal
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=meeting-intelligence
+
+# Resource constraints (optional but recommended for GPU workloads)
+# LimitMemory=16G
+
+[Install]
+WantedBy=multi-user.target
