@@ -1,5 +1,33 @@
 # Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtualenvs
+venv-py311/
+env/
+.venv/
+
+# Data and models (do NOT push large model artifacts)
+data/
+models/
+models--*/
+pyannote/
+
+# Frontend
+frontend/node_modules/
+
+# Misc
+*.log
+.DS_Store
+ 
+# Environment files
+.env
+.env.*
+# Python
+__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -10,7 +38,10 @@ build/
 
 # Virtual Environment
 venv/
+venv*/
 .venv/
+.venv*/
+.venv-*/
 env/
 
 # IDE
@@ -27,6 +58,7 @@ env/
 
 # Models (large files)
 models/
+.matplotlib_cache/
 *.pt
 *.pth
 *.bin
@@ -37,6 +69,7 @@ models/
 # Data
 data/uploads/
 data/outputs/
+data/samples/pipeline-smoke.*
 *.wav
 *.mp3
 *.flac

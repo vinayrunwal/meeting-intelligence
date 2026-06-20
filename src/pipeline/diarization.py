@@ -7,16 +7,36 @@ Identifies 'who spoke when' using PyAnnote Audio.
 from __future__ import annotations
 
 import logging
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 import torch
+from torch.torch_version import TorchVersion
 
 from config.settings import settings
 from src.models.schemas import SpeakerSegment
 from src.utils.device_manager import device_manager
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _trusted_torch_checkpoints():
+    """Allow trusted PyAnnote checkpoints to load under PyTorch 2.6+."""
+    original_load = torch.load
+
+    def trusted_load(*args, **kwargs):
+        kwargs["weights_only"] = False
+        return original_load(*args, **kwargs)
+
+    if hasattr(torch.serialization, "add_safe_globals"):
+        torch.serialization.add_safe_globals([TorchVersion])
+    torch.load = trusted_load
+    try:
+        yield
+    finally:
+        torch.load = original_load
 
 
 class SpeakerDiarizer:
@@ -47,18 +67,40 @@ class SpeakerDiarizer:
 
         try:
             from pyannote.audio import Pipeline
-            
-            # Load the pipeline from HF hub
-            self.pipeline = Pipeline.from_pretrained(
-                self.config.model_name,
-                use_auth_token=self.config.hf_token,
-            )
-            
-            if self.pipeline is None:
-                raise RuntimeError("Failed to load PyAnnote pipeline (returned None)")
+            import pyannote.audio.core.model as pyannote_model
+            import pyannote.audio.core.pipeline as pyannote_pipeline
+            import pyannote.audio.pipelines.speaker_verification as pyannote_speaker_verification
+            from huggingface_hub import hf_hub_download
 
-            # Move to target device
-            self.pipeline.to(self.device)
+            def hf_hub_download_compat(*args, use_auth_token=None, token=None, **kwargs):
+                if token is None:
+                    token = use_auth_token
+                return hf_hub_download(*args, token=token, **kwargs)
+
+            pyannote_model.hf_hub_download = hf_hub_download_compat
+            pyannote_pipeline.hf_hub_download = hf_hub_download_compat
+            pyannote_speaker_verification.hf_hub_download = hf_hub_download_compat
+
+            with _trusted_torch_checkpoints():
+                # Load the pipeline from HF hub
+                try:
+                    self.pipeline = Pipeline.from_pretrained(
+                        self.config.model_name,
+                        token=self.config.hf_token,
+                        cache_dir=str(settings.MODEL_CACHE_DIR / "pyannote"),
+                    )
+                except TypeError:
+                    self.pipeline = Pipeline.from_pretrained(
+                        self.config.model_name,
+                        use_auth_token=self.config.hf_token,
+                    )
+
+                if self.pipeline is None:
+                    raise RuntimeError("Failed to load PyAnnote pipeline (returned None)")
+
+                # Move to target device while PyAnnote may still lazily load weights.
+                self.pipeline.to(self.device)
+
             logger.info("PyAnnote pipeline loaded and moved to %s", self.device.type)
 
         except Exception as e:

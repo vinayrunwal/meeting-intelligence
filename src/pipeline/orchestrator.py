@@ -19,6 +19,7 @@ from src.models.schemas import (
     JobResult,
     JobState,
     MeetingDebrief,
+    SpeakerSegment,
 )
 from src.pipeline.asr_engine import WhisperASREngine
 from src.pipeline.audio_ingestion import AudioIngestionPipeline
@@ -101,8 +102,23 @@ class PipelineOrchestrator:
             
             if self.diarizer is None:
                 self.diarizer = SpeakerDiarizer()
-                
-            speaker_segments = self.diarizer.diarize(wav_path)
+
+            try:
+                speaker_segments = self.diarizer.diarize(wav_path)
+            except Exception as diarization_error:
+                logger.warning(
+                    "Diarization failed for job %s; using single-speaker fallback: %s",
+                    job_id,
+                    diarization_error,
+                )
+                speaker_segments = [
+                    SpeakerSegment(
+                        speaker="SPEAKER_00",
+                        start=segment.start,
+                        end=segment.end,
+                    )
+                    for segment in transcript_segments
+                ]
             
             # -------------------------------------------------------------
             # Step 1.4: Alignment

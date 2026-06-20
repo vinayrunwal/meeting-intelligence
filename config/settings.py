@@ -26,9 +26,12 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 OUTPUT_DIR = DATA_DIR / "outputs"
 LOG_DIR = PROJECT_ROOT / "logs"
 MODEL_CACHE_DIR = PROJECT_ROOT / "models"
+MATPLOTLIB_CACHE_DIR = PROJECT_ROOT / ".matplotlib_cache"
+
+os.environ.setdefault("MPLCONFIGDIR", str(MATPLOTLIB_CACHE_DIR))
 
 # Ensure directories exist
-for _dir in (UPLOAD_DIR, OUTPUT_DIR, LOG_DIR, MODEL_CACHE_DIR):
+for _dir in (UPLOAD_DIR, OUTPUT_DIR, LOG_DIR, MODEL_CACHE_DIR, MATPLOTLIB_CACHE_DIR):
     _dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -162,6 +165,11 @@ class Settings:
     audio: AudioConfig = field(default_factory=AudioConfig)
     api: APIConfig = field(default_factory=APIConfig)
     log: LogConfig = field(default_factory=LogConfig)
+    # Convenience filesystem paths (kept for backward compatibility)
+    UPLOAD_DIR: Path = UPLOAD_DIR
+    OUTPUT_DIR: Path = OUTPUT_DIR
+    LOG_DIR: Path = LOG_DIR
+    MODEL_CACHE_DIR: Path = MODEL_CACHE_DIR
 
 
 # Module-level singleton

@@ -4,7 +4,6 @@ Meeting Intelligence System — Gunicorn Configuration
 Gunicorn config for running the Flask API in production with GPU workloads.
 """
 
-import multiprocessing
 
 # Bind to unix socket for NGINX or port for testing
 bind = "0.0.0.0:8000"

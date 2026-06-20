@@ -5,7 +5,6 @@ Meeting Intelligence System — Benchmark Runner
 Main entry point to execute all benchmarks and generate a Markdown report.
 """
 
-import json
 import logging
 from datetime import datetime
 from pathlib import Path

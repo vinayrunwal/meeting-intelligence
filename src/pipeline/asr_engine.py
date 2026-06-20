@@ -8,8 +8,9 @@ Extracts text with word-level timestamps for diarization alignment.
 from __future__ import annotations
 
 import logging
+import math
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Optional
 
 from faster_whisper import WhisperModel
 
@@ -18,6 +19,26 @@ from src.models.schemas import TranscriptSegment, TranscriptWord
 from src.utils.device_manager import device_manager
 
 logger = logging.getLogger(__name__)
+
+
+def _clamp_probability(value: float | None) -> float:
+    """Return a finite probability in the schema's 0..1 range."""
+    if value is None:
+        return 0.0
+    if not math.isfinite(value):
+        return 0.0
+    return max(0.0, min(1.0, float(value)))
+
+
+def _segment_confidence(avg_logprob: float | None, words: list[TranscriptWord]) -> float:
+    """Estimate segment confidence from word probabilities or avg log-probability."""
+    if words:
+        return _clamp_probability(
+            sum(word.confidence for word in words) / len(words)
+        )
+    if avg_logprob is None or not math.isfinite(avg_logprob):
+        return 0.0
+    return _clamp_probability(math.exp(avg_logprob))
 
 
 class WhisperASREngine:
@@ -43,6 +64,9 @@ class WhisperASREngine:
         
         # faster_whisper expects 'cuda' or 'cpu' as device string
         device_str = "cuda" if self.device.type == "cuda" else "cpu"
+        compute_type = self.compute_type
+        if device_str == "cpu" and compute_type in {"float16", "int8_float16"}:
+            compute_type = "int8"
         
         # Check memory if using GPU
         if device_str == "cuda":
@@ -61,7 +85,7 @@ class WhisperASREngine:
             self.model = WhisperModel(
                 self.config.model_size,
                 device=device_str,
-                compute_type=self.compute_type,
+                compute_type=compute_type,
                 # Avoid downloading to arbitrary directories
                 download_root=str(settings.MODEL_CACHE_DIR),
             )
@@ -122,7 +146,7 @@ class WhisperASREngine:
                         word=w.word,
                         start=w.start,
                         end=w.end,
-                        confidence=w.probability,
+                        confidence=_clamp_probability(w.probability),
                     )
                     for w in segment.words
                 ]
@@ -132,7 +156,7 @@ class WhisperASREngine:
                 text=segment.text,
                 start=segment.start,
                 end=segment.end,
-                confidence=segment.avg_logprob,  # Rough proxy for confidence
+                confidence=_segment_confidence(segment.avg_logprob, words),
                 language=info.language,
                 words=words,
             )

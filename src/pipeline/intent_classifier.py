@@ -7,7 +7,7 @@ Zero-shot text classification to determine the intent behind a speaker's turn.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from config.settings import settings
 from src.models.schemas import IntentResult

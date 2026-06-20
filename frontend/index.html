@@ -1,0 +1,1146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meeting Intelligence</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f7f5;
+      --surface: #ffffff;
+      --surface-soft: #eef4f1;
+      --ink: #17211c;
+      --muted: #64716a;
+      --line: #dbe4df;
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --blue: #2563eb;
+      --gold: #b7791f;
+      --red: #b42318;
+      --green: #15803d;
+      --shadow: 0 18px 42px rgba(28, 41, 34, 0.12);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.78), rgba(244,247,245,0.92)),
+        radial-gradient(circle at 20% 0%, rgba(15,118,110,0.12), transparent 26%),
+        var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.76);
+      backdrop-filter: blur(16px);
+      padding: 20px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+    }
+
+    .brand h1 {
+      font-size: 17px;
+      line-height: 1.2;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 10px;
+      color: var(--muted);
+      background: white;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--gold);
+    }
+
+    .dot.online {
+      background: var(--green);
+    }
+
+    .dot.offline {
+      background: var(--red);
+    }
+
+    .panel-title {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin: 22px 0 10px;
+      text-transform: uppercase;
+    }
+
+    .jobs-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .job-row {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      color: var(--ink);
+      display: grid;
+      gap: 3px;
+      padding: 10px;
+      text-align: left;
+      width: 100%;
+    }
+
+    .job-row.active {
+      border-color: rgba(15, 118, 110, 0.55);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+
+    .job-row strong {
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .job-row span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .main {
+      padding: 22px;
+      min-width: 0;
+    }
+
+    .topbar {
+      align-items: center;
+      display: flex;
+      gap: 16px;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .topbar h2 {
+      font-size: 24px;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .actions {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .button {
+      align-items: center;
+      border-radius: 8px;
+      display: inline-flex;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 13px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .button:active {
+      transform: translateY(1px);
+    }
+
+    .button.primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 10px 20px rgba(15, 118, 110, 0.2);
+    }
+
+    .button.primary:hover {
+      background: var(--accent-strong);
+    }
+
+    .button.ghost {
+      background: white;
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+
+    .button.danger {
+      background: #fff3f1;
+      border: 1px solid #ffd8d3;
+      color: var(--red);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(320px, 0.9fr) minmax(380px, 1.1fr);
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .card-header {
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      min-height: 54px;
+      padding: 14px 16px;
+      gap: 12px;
+    }
+
+    .card-header h3 {
+      font-size: 15px;
+      margin: 0;
+    }
+
+    .card-body {
+      padding: 16px;
+    }
+
+    .dropzone {
+      align-items: center;
+      background: var(--surface-soft);
+      border: 1px dashed #9db5aa;
+      border-radius: 8px;
+      display: grid;
+      gap: 12px;
+      justify-items: center;
+      min-height: 210px;
+      padding: 22px;
+      text-align: center;
+      transition: border 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+
+    .dropzone.dragging {
+      background: #e0f2ef;
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .dropzone input {
+      display: none;
+    }
+
+    .upload-icon {
+      align-items: center;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--accent);
+      display: flex;
+      font-size: 26px;
+      height: 58px;
+      justify-content: center;
+      width: 58px;
+    }
+
+    .dropzone strong {
+      display: block;
+      font-size: 18px;
+    }
+
+    .dropzone small,
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .file-meta {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: grid;
+      gap: 4px;
+      margin-top: 12px;
+      padding: 12px;
+    }
+
+    .file-meta strong {
+      overflow-wrap: anywhere;
+    }
+
+    .meter {
+      background: #dbe7e2;
+      border-radius: 999px;
+      height: 12px;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .meter-fill {
+      background: linear-gradient(90deg, var(--accent), var(--blue));
+      height: 100%;
+      transition: width 0.25s ease;
+      width: 0%;
+    }
+
+    .stage {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stage:last-child {
+      border-bottom: 0;
+    }
+
+    .stage-check {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      display: grid;
+      flex: 0 0 auto;
+      height: 28px;
+      place-items: center;
+      width: 28px;
+    }
+
+    .stage.done .stage-check {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+    }
+
+    .stage.current .stage-check {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .stage strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .stage span {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .tabs {
+      display: inline-flex;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .tab {
+      background: transparent;
+      border-radius: 6px;
+      color: var(--muted);
+      min-height: 31px;
+      padding: 0 10px;
+    }
+
+    .tab.active {
+      background: white;
+      box-shadow: 0 1px 6px rgba(21, 35, 28, 0.1);
+      color: var(--ink);
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .summary {
+      color: #25342c;
+      line-height: 1.6;
+      margin: 0 0 16px;
+    }
+
+    .stat-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-bottom: 16px;
+    }
+
+    .stat {
+      background: var(--surface-soft);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 22px;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: white;
+    }
+
+    .item strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .item p {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    .transcript {
+      display: grid;
+      gap: 10px;
+      max-height: 560px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .turn {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: grid;
+      gap: 7px;
+      padding: 12px;
+      background: white;
+    }
+
+    .turn-head {
+      align-items: center;
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    .speaker {
+      color: var(--accent-strong);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .time {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .badge {
+      background: var(--surface-soft);
+      border-radius: 999px;
+      color: #405047;
+      font-size: 12px;
+      padding: 4px 8px;
+    }
+
+    .logs {
+      background: #111916;
+      border-radius: 8px;
+      color: #d7f5e8;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      max-height: 340px;
+      overflow: auto;
+      padding: 12px;
+      white-space: pre-wrap;
+    }
+
+    .empty {
+      align-items: center;
+      color: var(--muted);
+      display: grid;
+      justify-items: center;
+      min-height: 260px;
+      text-align: center;
+    }
+
+    .toast {
+      background: #12211b;
+      border-radius: 8px;
+      bottom: 18px;
+      box-shadow: var(--shadow);
+      color: white;
+      left: 50%;
+      max-width: min(520px, calc(100vw - 32px));
+      opacity: 0;
+      padding: 12px 14px;
+      pointer-events: none;
+      position: fixed;
+      transform: translate(-50%, 12px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 20;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        height: auto;
+        position: static;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .main,
+      .sidebar {
+        padding: 14px;
+      }
+
+      .stat-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .tabs {
+        width: 100%;
+      }
+
+      .tab {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">MI</div>
+        <h1>Meeting<br>Intelligence</h1>
+      </div>
+
+      <div id="apiStatus" class="status-pill">
+        <span class="dot"></span>
+        <span>Checking API</span>
+      </div>
+
+      <div class="panel-title">Recent jobs</div>
+      <div id="jobsList" class="jobs-list">
+        <div class="hint">No jobs loaded.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h2>Audio Workspace</h2>
+          <div class="hint" id="currentJobLabel">Ready</div>
+        </div>
+        <div class="actions">
+          <button class="button ghost" id="refreshJobsBtn" type="button">Refresh</button>
+          <button class="button ghost" id="fetchResultBtn" type="button" disabled>Fetch result</button>
+          <button class="button danger" id="cancelJobBtn" type="button" disabled>Cancel</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section class="card">
+          <div class="card-header">
+            <h3>Upload</h3>
+            <span class="status-pill" id="jobStatePill"><span class="dot"></span><span>No active job</span></span>
+          </div>
+          <div class="card-body">
+            <form id="uploadForm">
+              <label class="dropzone" id="dropzone" for="fileInput">
+                <input id="fileInput" type="file" accept="audio/*" />
+                <span class="upload-icon">↑</span>
+                <span>
+                  <strong id="dropTitle">Choose meeting audio</strong>
+                  <small>WAV, MP3, M4A, FLAC, OGG, AAC, OPUS, WMA</small>
+                </span>
+                <button class="button ghost" type="button" id="browseBtn">Browse</button>
+              </label>
+
+              <div id="fileMeta" class="file-meta" hidden></div>
+
+              <div class="actions" style="justify-content: flex-start; margin-top: 14px;">
+                <button class="button primary" id="uploadBtn" type="submit" disabled>Upload and process</button>
+                <button class="button ghost" id="clearBtn" type="button" disabled>Clear</button>
+              </div>
+            </form>
+
+            <div class="panel-title">Progress</div>
+            <div class="meter" aria-label="Processing progress"><div id="progressFill" class="meter-fill"></div></div>
+            <div class="hint" id="progressText" style="margin-top: 8px;">Waiting for audio.</div>
+
+            <div id="stageList" style="margin-top: 14px;"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>Results</h3>
+            <div class="tabs" role="tablist" aria-label="Result views">
+              <button class="tab active" type="button" data-view="debrief">Debrief</button>
+              <button class="tab" type="button" data-view="transcript">Transcript</button>
+              <button class="tab" type="button" data-view="events">Events</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="debriefView" class="view active">
+              <div class="empty" id="emptyDebrief">
+                <div>
+                  <strong>No debrief yet</strong>
+                  <div class="hint">Completed jobs appear here.</div>
+                </div>
+              </div>
+              <div id="debriefContent" hidden></div>
+            </div>
+
+            <div id="transcriptView" class="view">
+              <div class="empty" id="emptyTranscript">
+                <div>
+                  <strong>No transcript yet</strong>
+                  <div class="hint">Speaker turns appear here.</div>
+                </div>
+              </div>
+              <div id="transcriptContent" class="transcript" hidden></div>
+            </div>
+
+            <div id="eventsView" class="view">
+              <div id="eventLog" class="logs">No events yet.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000/api/v1";
+    const API_ROOT = "http://127.0.0.1:8000";
+
+    const stages = [
+      ["queued", "Queued", "Job accepted"],
+      ["ingestion", "Ingestion", "Audio standardized"],
+      ["transcription", "Transcription", "Speech to text"],
+      ["diarization", "Diarization", "Speaker turns"],
+      ["alignment", "Alignment", "Text matched to speakers"],
+      ["classification", "Classification", "Emotion and intent"],
+      ["summarization", "Debrief", "Summary generated"],
+      ["completed", "Complete", "Result ready"]
+    ];
+
+    const state = {
+      currentJobId: null,
+      selectedFile: null,
+      events: [],
+      eventSource: null,
+      result: null
+    };
+
+    const els = {
+      apiStatus: document.getElementById("apiStatus"),
+      jobsList: document.getElementById("jobsList"),
+      currentJobLabel: document.getElementById("currentJobLabel"),
+      refreshJobsBtn: document.getElementById("refreshJobsBtn"),
+      fetchResultBtn: document.getElementById("fetchResultBtn"),
+      cancelJobBtn: document.getElementById("cancelJobBtn"),
+      uploadForm: document.getElementById("uploadForm"),
+      dropzone: document.getElementById("dropzone"),
+      fileInput: document.getElementById("fileInput"),
+      browseBtn: document.getElementById("browseBtn"),
+      uploadBtn: document.getElementById("uploadBtn"),
+      clearBtn: document.getElementById("clearBtn"),
+      fileMeta: document.getElementById("fileMeta"),
+      dropTitle: document.getElementById("dropTitle"),
+      progressFill: document.getElementById("progressFill"),
+      progressText: document.getElementById("progressText"),
+      stageList: document.getElementById("stageList"),
+      jobStatePill: document.getElementById("jobStatePill"),
+      eventLog: document.getElementById("eventLog"),
+      emptyDebrief: document.getElementById("emptyDebrief"),
+      debriefContent: document.getElementById("debriefContent"),
+      emptyTranscript: document.getElementById("emptyTranscript"),
+      transcriptContent: document.getElementById("transcriptContent"),
+      toast: document.getElementById("toast")
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return "Unknown size";
+      const units = ["B", "KB", "MB", "GB"];
+      let size = bytes;
+      let unit = 0;
+      while (size >= 1024 && unit < units.length - 1) {
+        size /= 1024;
+        unit += 1;
+      }
+      return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+    }
+
+    function formatTime(seconds) {
+      const safe = Math.max(0, Number(seconds) || 0);
+      const mins = Math.floor(safe / 60);
+      const secs = Math.floor(safe % 60);
+      return `${mins}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function showToast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      window.clearTimeout(showToast.timeout);
+      showToast.timeout = window.setTimeout(() => els.toast.classList.remove("show"), 3200);
+    }
+
+    function setApiStatus(kind, label) {
+      const dotClass = kind === "online" ? "online" : kind === "offline" ? "offline" : "";
+      els.apiStatus.innerHTML = `<span class="dot ${dotClass}"></span><span>${escapeHtml(label)}</span>`;
+    }
+
+    function setJobPill(kind, label) {
+      const dotClass = kind === "online" ? "online" : kind === "offline" ? "offline" : "";
+      els.jobStatePill.innerHTML = `<span class="dot ${dotClass}"></span><span>${escapeHtml(label)}</span>`;
+    }
+
+    function renderStages(activeStage, percent = 0) {
+      const activeIndex = Math.max(0, stages.findIndex(([key]) => key === activeStage));
+      els.stageList.innerHTML = stages.map(([key, title, detail], index) => {
+        const done = percent >= 100 || index < activeIndex;
+        const current = index === activeIndex && percent < 100;
+        const symbol = done ? "✓" : current ? "•" : "";
+        return `
+          <div class="stage ${done ? "done" : ""} ${current ? "current" : ""}">
+            <div class="stage-check">${symbol}</div>
+            <div>
+              <strong>${title}</strong>
+              <span>${detail}</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function setProgress(stage, percent, message) {
+      const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
+      els.progressFill.style.width = `${clamped}%`;
+      els.progressText.textContent = `${Math.round(clamped)}% · ${message || stage || "Processing"}`;
+      renderStages(stage || "queued", clamped);
+    }
+
+    function addEvent(data) {
+      const time = new Date().toLocaleTimeString();
+      const line = `[${time}] ${JSON.stringify(data)}`;
+      state.events.unshift(line);
+      els.eventLog.textContent = state.events.join("\n");
+    }
+
+    function selectFile(file) {
+      state.selectedFile = file;
+      els.uploadBtn.disabled = !file;
+      els.clearBtn.disabled = !file;
+      if (!file) {
+        els.fileInput.value = "";
+        els.fileMeta.hidden = true;
+        els.fileMeta.innerHTML = "";
+        els.dropTitle.textContent = "Choose meeting audio";
+        return;
+      }
+      els.dropTitle.textContent = file.name;
+      els.fileMeta.hidden = false;
+      els.fileMeta.innerHTML = `
+        <strong>${escapeHtml(file.name)}</strong>
+        <span class="hint">${formatBytes(file.size)} · ${escapeHtml(file.type || "audio file")}</span>
+      `;
+    }
+
+    function setCurrentJob(jobId, label) {
+      state.currentJobId = jobId;
+      els.currentJobLabel.textContent = label || (jobId ? `Job ${jobId}` : "Ready");
+      els.fetchResultBtn.disabled = !jobId;
+      els.cancelJobBtn.disabled = !jobId;
+    }
+
+    function clearResult() {
+      state.result = null;
+      els.emptyDebrief.hidden = false;
+      els.debriefContent.hidden = true;
+      els.debriefContent.innerHTML = "";
+      els.emptyTranscript.hidden = false;
+      els.transcriptContent.hidden = true;
+      els.transcriptContent.innerHTML = "";
+    }
+
+    async function checkHealth() {
+      try {
+        const response = await fetch(`${API_ROOT}/health`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        setApiStatus("online", data.gpu_available ? "API online · GPU" : "API online · CPU");
+        return true;
+      } catch (error) {
+        setApiStatus("offline", "API offline");
+        addEvent({ error: `Health check failed: ${error.message}` });
+        return false;
+      }
+    }
+
+    async function loadJobs() {
+      try {
+        const response = await fetch(`${API_BASE}/jobs?limit=12`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        const jobs = payload.data?.jobs || [];
+        if (!jobs.length) {
+          els.jobsList.innerHTML = `<div class="hint">No jobs yet.</div>`;
+          return;
+        }
+        els.jobsList.innerHTML = jobs.map((job) => `
+          <button class="job-row ${job.job_id === state.currentJobId ? "active" : ""}" type="button" data-job-id="${escapeHtml(job.job_id)}">
+            <strong>${escapeHtml(job.audio_metadata?.filename || job.job_id)}</strong>
+            <span>${escapeHtml(job.state)} · ${Math.round(job.progress?.percent || 0)}%</span>
+          </button>
+        `).join("");
+      } catch (error) {
+        els.jobsList.innerHTML = `<div class="hint">Could not load jobs.</div>`;
+        addEvent({ error: `Jobs failed: ${error.message}` });
+      }
+    }
+
+    async function uploadSelectedFile() {
+      if (!state.selectedFile) {
+        showToast("Choose an audio file first.");
+        return;
+      }
+
+      clearResult();
+      state.events = [];
+      addEvent({ upload: state.selectedFile.name });
+      setProgress("queued", 0, "Uploading audio");
+      setJobPill("", "Uploading");
+      els.uploadBtn.disabled = true;
+
+      try {
+        const formData = new FormData();
+        formData.append("file", state.selectedFile);
+        const response = await fetch(`${API_BASE}/upload`, { method: "POST", body: formData });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error?.message || payload.error || `HTTP ${response.status}`);
+        }
+
+        const jobId = payload.data.job_id;
+        setCurrentJob(jobId, `Processing ${state.selectedFile.name}`);
+        setJobPill("online", `Job ${jobId}`);
+        addEvent(payload.data);
+        connectStream(jobId);
+        await loadJobs();
+      } catch (error) {
+        setJobPill("offline", "Upload failed");
+        addEvent({ error: error.message });
+        showToast(error.message);
+      } finally {
+        els.uploadBtn.disabled = !state.selectedFile;
+      }
+    }
+
+    function connectStream(jobId) {
+      if (state.eventSource) state.eventSource.close();
+      addEvent({ stream: `connected to ${jobId}` });
+      state.eventSource = new EventSource(`${API_BASE}/stream/${jobId}`);
+
+      state.eventSource.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        addEvent(data);
+
+        if (data.error) {
+          setJobPill("offline", "Failed");
+          showToast(data.error);
+          state.eventSource.close();
+          await fetchResult(jobId);
+          await loadJobs();
+          return;
+        }
+
+        setProgress(data.stage, data.percent, data.message || data.state);
+        if (data.state === "completed" || data.processing_time !== undefined) {
+          setJobPill("online", "Completed");
+          state.eventSource.close();
+          await fetchResult(jobId);
+          await loadJobs();
+        }
+      };
+
+      state.eventSource.onerror = async () => {
+        addEvent({ stream: "closed" });
+        state.eventSource.close();
+        await fetchResult(jobId);
+        await loadJobs();
+      };
+    }
+
+    async function fetchResult(jobId = state.currentJobId) {
+      if (!jobId) return;
+      try {
+        const response = await fetch(`${API_BASE}/result/${jobId}`);
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error?.message || payload.error || `HTTP ${response.status}`);
+        if (!payload.data?.ready) {
+          const status = payload.data?.status;
+          setProgress(status?.progress?.stage, status?.progress?.percent, status?.progress?.message || "Result pending");
+          setJobPill("", status?.state || "Pending");
+          addEvent({ result: "not ready" });
+          return;
+        }
+        state.result = payload.data.result;
+        setProgress("completed", 100, "Processing complete");
+        setJobPill("online", "Completed");
+        renderResult(state.result);
+        addEvent({ result: "ready", job_id: jobId });
+      } catch (error) {
+        addEvent({ error: `Result failed: ${error.message}` });
+        showToast(error.message);
+      }
+    }
+
+    async function cancelCurrentJob() {
+      if (!state.currentJobId) return;
+      try {
+        const response = await fetch(`${API_BASE}/jobs/${state.currentJobId}`, { method: "DELETE" });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error?.message || payload.error || `HTTP ${response.status}`);
+        addEvent(payload);
+        setJobPill("", "Cancelled");
+        setCurrentJob(null, "Ready");
+        if (state.eventSource) state.eventSource.close();
+        await loadJobs();
+      } catch (error) {
+        addEvent({ error: `Cancel failed: ${error.message}` });
+        showToast(error.message);
+      }
+    }
+
+    function renderResult(result) {
+      const debrief = result.debrief || {};
+      const segments = result.segments || [];
+      const meta = result.audio_metadata || {};
+      els.emptyDebrief.hidden = true;
+      els.debriefContent.hidden = false;
+      els.debriefContent.innerHTML = `
+        <div class="stat-grid">
+          <div class="stat"><strong>${segments.length}</strong><span>Turns</span></div>
+          <div class="stat"><strong>${formatTime(meta.duration_seconds)}</strong><span>Duration</span></div>
+          <div class="stat"><strong>${formatTime(result.processing_time_seconds)}</strong><span>Processing</span></div>
+        </div>
+        <p class="summary">${escapeHtml(debrief.summary || "No summary returned.")}</p>
+        ${renderSection("Action Items", debrief.action_items, (item) => `
+          <strong>${escapeHtml(item.owner || "Unassigned")}</strong>
+          <p>${escapeHtml(item.description)}</p>
+        `)}
+        ${renderSection("Decisions", debrief.decisions, (item) => `
+          <strong>Decision</strong>
+          <p>${escapeHtml(item.description)}</p>
+        `)}
+        ${renderSection("Conflicts", debrief.conflicts, (item) => `
+          <strong>${escapeHtml(item.status || "Unresolved")}</strong>
+          <p>${escapeHtml(item.description)}</p>
+        `)}
+        ${renderSection("Speaker Profiles", debrief.speaker_profiles, (item) => `
+          <strong>${escapeHtml(item.speaker)}</strong>
+          <p>${escapeHtml(item.communication_style || "style unknown")} · ${escapeHtml(item.dominant_emotion || "neutral")} · ${item.turn_count || 0} turns</p>
+        `)}
+      `;
+
+      els.emptyTranscript.hidden = segments.length > 0;
+      els.transcriptContent.hidden = segments.length === 0;
+      els.transcriptContent.innerHTML = segments.map((seg) => `
+        <article class="turn">
+          <div class="turn-head">
+            <span class="speaker">${escapeHtml(seg.speaker)}</span>
+            <span class="time">${formatTime(seg.start)}-${formatTime(seg.end)}</span>
+          </div>
+          <div>${escapeHtml(seg.text)}</div>
+          <div class="badges">
+            <span class="badge">${escapeHtml(seg.emotion?.label || "emotion unknown")}</span>
+            <span class="badge">${escapeHtml(seg.intent?.label || "intent unknown")}</span>
+            <span class="badge">${Math.round((seg.confidence || 0) * 100)}% confidence</span>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderSection(title, items, template) {
+      if (!items || !items.length) return "";
+      return `
+        <div class="panel-title">${escapeHtml(title)}</div>
+        <div class="list">
+          ${items.map((item) => `<div class="item">${template(item)}</div>`).join("")}
+        </div>
+      `;
+    }
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((node) => node.classList.remove("active"));
+        document.querySelectorAll(".view").forEach((node) => node.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(`${tab.dataset.view}View`).classList.add("active");
+      });
+    });
+
+    els.browseBtn.addEventListener("click", () => els.fileInput.click());
+    els.fileInput.addEventListener("change", () => selectFile(els.fileInput.files[0] || null));
+    els.clearBtn.addEventListener("click", () => selectFile(null));
+    els.uploadForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      uploadSelectedFile();
+    });
+    els.refreshJobsBtn.addEventListener("click", loadJobs);
+    els.fetchResultBtn.addEventListener("click", () => fetchResult());
+    els.cancelJobBtn.addEventListener("click", cancelCurrentJob);
+
+    els.jobsList.addEventListener("click", async (event) => {
+      const row = event.target.closest("[data-job-id]");
+      if (!row) return;
+      const jobId = row.dataset.jobId;
+      setCurrentJob(jobId, `Job ${jobId}`);
+      await fetchResult(jobId);
+      await loadJobs();
+    });
+
+    ["dragenter", "dragover"].forEach((name) => {
+      els.dropzone.addEventListener(name, (event) => {
+        event.preventDefault();
+        els.dropzone.classList.add("dragging");
+      });
+    });
+
+    ["dragleave", "drop"].forEach((name) => {
+      els.dropzone.addEventListener(name, (event) => {
+        event.preventDefault();
+        els.dropzone.classList.remove("dragging");
+      });
+    });
+
+    els.dropzone.addEventListener("drop", (event) => {
+      const file = event.dataTransfer.files[0];
+      if (file) selectFile(file);
+    });
+
+    renderStages("queued", 0);
+    checkHealth();
+    loadJobs();
+  </script>
+</body>
+</html>

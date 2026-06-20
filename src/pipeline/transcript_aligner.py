@@ -8,13 +8,11 @@ using temporal overlap maximization.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from src.models.schemas import (
     AlignedSegment,
     SpeakerSegment,
     TranscriptSegment,
-    TranscriptWord,
 )
 
 logger = logging.getLogger(__name__)

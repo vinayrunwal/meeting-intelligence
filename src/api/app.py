@@ -7,16 +7,20 @@ and sets up the background task executor.
 
 import atexit
 import logging
+import sys
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from flask import Flask, jsonify
-from flask_cors import CORS
 
 from config.logging_config import configure_logging
-from config.settings import settings
+from config.settings import settings, PROJECT_ROOT
+from src.api.cors import configure_cors
 from src.api.error_handlers import error_bp
 from src.api.routes import api_bp
-from src.pipeline.orchestrator import PipelineOrchestrator
 
 logger = logging.getLogger("api")
 
@@ -33,7 +37,10 @@ def create_app() -> Flask:
     app.config['MAX_CONTENT_LENGTH'] = settings.audio.max_upload_size_mb * 1024 * 1024
     
     # 3. Setup CORS
-    CORS(app, resources={r"/api/*": {"origins": settings.api.cors_origins}})
+    configure_cors(app, settings.api.cors_origins, resources={
+        r"/api/*": {"origins": settings.api.cors_origins},
+        r"/health": {"origins": settings.api.cors_origins},
+    })
     
     # 4. Register blueprints
     app.register_blueprint(error_bp)
@@ -47,18 +54,26 @@ def create_app() -> Flask:
     logger.info("Initializing ThreadPoolExecutor with %d workers", workers)
     app.executor = ThreadPoolExecutor(max_workers=workers)
     
-    # Initialize the ML orchestrator
-    # We initialize it here so it lives with the app lifecycle
-    app.orchestrator = PipelineOrchestrator()
+    # The ML orchestrator is loaded lazily on first upload so health/status
+    # endpoints can run in lightweight environments without ML dependencies.
+    app.orchestrator = None
     
     # Cleanup executor on exit
     def cleanup():
-        logger.info("Shutting down executor...")
-        app.executor.shutdown(wait=False)
+        try:
+            app.executor.shutdown(wait=False)
+        except Exception:
+            pass
         
     atexit.register(cleanup)
     
-    # 6. Add Health Check
+    # 6. Add Frontend and Health Check
+    from flask import send_file
+    @app.route("/")
+    def index():
+        frontend_dir = PROJECT_ROOT / "frontend"
+        return send_file(frontend_dir / "index.html")
+        
     @app.route("/health")
     def health_check():
         return jsonify({

@@ -11,9 +11,12 @@ import logging
 import logging.handlers
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
-import structlog
+try:
+    import structlog
+except ModuleNotFoundError:
+    structlog = None
 
 from config.settings import settings
 
@@ -22,6 +25,7 @@ def _setup_stdlib_logging(log_dir: Path, level: str) -> None:
     """Configure the standard library root logger with file + stream handlers."""
     root = logging.getLogger()
     root.setLevel(getattr(logging, level.upper(), logging.INFO))
+    root.handlers.clear()
 
     # ── Console handler ────────────────────────────────────────────────
     console = logging.StreamHandler(sys.stdout)
@@ -52,6 +56,9 @@ def _setup_stdlib_logging(log_dir: Path, level: str) -> None:
 
 def _setup_structlog(json_format: bool = True) -> None:
     """Configure structlog processors for structured logging."""
+    if structlog is None:
+        return
+
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
@@ -63,7 +70,7 @@ def _setup_structlog(json_format: bool = True) -> None:
     ]
 
     if json_format:
-        renderer: structlog.types.Processor = structlog.processors.JSONRenderer()
+        renderer = structlog.processors.JSONRenderer()
     else:
         renderer = structlog.dev.ConsoleRenderer(
             colors=True,
@@ -73,6 +80,7 @@ def _setup_structlog(json_format: bool = True) -> None:
     structlog.configure(
         processors=[
             *shared_processors,
+            renderer,
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
         logger_factory=structlog.stdlib.LoggerFactory(),
@@ -102,7 +110,7 @@ def configure_logging(
     _setup_structlog(json_format=(_format == "json"))
 
 
-def get_logger(name: str) -> structlog.stdlib.BoundLogger:
+def get_logger(name: str) -> Any:
     """
     Get a structured logger bound to the given name.
 
@@ -112,6 +120,8 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
         logger = get_logger(__name__)
         logger.info("Processing audio", file="meeting.wav", duration=120.5)
     """
+    if structlog is None:
+        return logging.getLogger(name)
     return structlog.get_logger(name)
 
 

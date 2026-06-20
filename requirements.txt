@@ -33,7 +33,7 @@ protobuf>=4.25.0
 pydub>=0.25.1
 librosa>=0.10.0
 soundfile>=0.12.0
-numpy>=1.24.0,<2.0.0
+numpy>=1.26.0
 
 # --- Web Framework & API ---
 flask>=3.0.0

@@ -4,19 +4,33 @@ Meeting Intelligence System — API Routes
 REST endpoints for uploading audio, checking status, and streaming results.
 """
 
-import os
-from pathlib import Path
 
 from flask import Blueprint, Response, current_app, jsonify, request, stream_with_context
 from werkzeug.utils import secure_filename
 
 from config.settings import settings
-from src.api.error_handlers import ResourceNotFoundError, ValidationError
+from src.api.error_handlers import APIError, ResourceNotFoundError, ValidationError
 from src.api.streaming import stream_job_events
 from src.api.validators import validate_upload
 from src.utils.job_store import job_store
 
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
+
+
+def _get_orchestrator():
+    """Create the ML orchestrator only when a processing job needs it."""
+    if current_app.orchestrator is None:
+        try:
+            from src.pipeline.orchestrator import PipelineOrchestrator
+        except ModuleNotFoundError as exc:
+            raise APIError(
+                "Audio processing dependencies are not installed. "
+                "Install the ML requirements before uploading audio.",
+                status_code=503,
+            ) from exc
+
+        current_app.orchestrator = PipelineOrchestrator()
+    return current_app.orchestrator
 
 
 @api_bp.route("/upload", methods=["POST"])
@@ -30,6 +44,7 @@ def upload_audio():
         
     file = request.files["file"]
     validate_upload(file)
+    orchestrator = _get_orchestrator()
     
     # Save file temporarily
     filename = secure_filename(file.filename)
@@ -45,7 +60,7 @@ def upload_audio():
     # Submit to background executor
     # current_app.executor is a ThreadPoolExecutor attached in app.py
     current_app.executor.submit(
-        current_app.orchestrator.process_job,
+        orchestrator.process_job,
         job_id=job_id,
         file_path=file_path
     )
