@@ -30,9 +30,17 @@ MATPLOTLIB_CACHE_DIR = PROJECT_ROOT / ".matplotlib_cache"
 
 os.environ.setdefault("MPLCONFIGDIR", str(MATPLOTLIB_CACHE_DIR))
 
-# Ensure directories exist
+# Ensure directories exist.
+# On serverless platforms (e.g. Vercel) the filesystem under the app bundle
+# can be read-only, so we must not crash during import.
 for _dir in (UPLOAD_DIR, OUTPUT_DIR, LOG_DIR, MODEL_CACHE_DIR, MATPLOTLIB_CACHE_DIR):
-    _dir.mkdir(parents=True, exist_ok=True)
+    try:
+        _dir.mkdir(parents=True, exist_ok=True)
+    except (OSError, PermissionError):
+        # Allow the app to start even if these dirs cannot be created.
+        # ML pipeline paths can still be overridden via env vars in production.
+        pass
+
 
 
 def _env(key: str, default: str = "") -> str:
