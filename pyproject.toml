@@ -14,5 +14,9 @@ requires-python = ">=3.10"
 #
 # If your Vercel build does not auto-install requirements.txt, then
 # add explicit PEP-508 dependencies instead.
-dependencies = []
+dependencies = [
+  "flask>=3.0.0",
+  "flask-cors>=4.0.0",
+  "python-dotenv>=1.0.0",
+]
 
