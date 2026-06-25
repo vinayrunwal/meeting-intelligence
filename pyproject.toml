@@ -7,7 +7,12 @@ version = "0.1.0"
 description = "Real-Time Multilingual Meeting Intelligence System"
 requires-python = ">=3.10"
 
-dependencies = [
-  "-r requirements.txt"
-]
+# Vercel/uv requires PEP 508 dependency specs here.
+# This project already has a complete requirements.txt; listing them here
+# would be large. Instead, keep dependencies empty and let Vercel install
+# from requirements.txt.
+#
+# If your Vercel build does not auto-install requirements.txt, then
+# add explicit PEP-508 dependencies instead.
+dependencies = []
 
