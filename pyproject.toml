@@ -1,5 +1,5 @@
 [tool.vercel]
-entrypoint = "dev_server:app"
+entrypoint = "src.api.app:create_app"
 
 [project]
 name = "meeting-intelligence"
